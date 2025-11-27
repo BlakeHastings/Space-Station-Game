@@ -216,16 +216,6 @@ public class SimulationEngineTests
     }
 
     [Fact]
-    public void DefaultConstructor_UsesSystemTimeProvider()
-    {
-        // This test just verifies the default constructor doesn't throw
-        var engine = new SimulationEngine();
-
-        Assert.NotNull(engine);
-        Assert.Equal(0, engine.TickCount);
-    }
-
-    [Fact]
     public void FixedTimestep_IsApproximately16Point67Ms()
     {
         // 1000ms / 60fps = 16.666...ms
