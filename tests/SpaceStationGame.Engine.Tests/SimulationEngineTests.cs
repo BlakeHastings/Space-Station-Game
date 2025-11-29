@@ -14,7 +14,8 @@ public class SimulationEngineTests
     public void Constructor_InitializesWithZeroState()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         Assert.Equal(0, engine.TickCount);
         Assert.Equal(0, engine.SimulationTime);
@@ -25,7 +26,8 @@ public class SimulationEngineTests
     public void Tick_WithNoElapsedTime_DoesNotAdvanceSimulation()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // First tick syncs the timestamp
         engine.Tick();
@@ -42,7 +44,8 @@ public class SimulationEngineTests
     public void Tick_WithOneFrameElapsed_ExecutesOneTick()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
         engine.Tick();
@@ -59,7 +62,8 @@ public class SimulationEngineTests
     public void Tick_WithMultipleFramesElapsed_ExecutesMultipleTicks()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
         engine.Tick();
@@ -76,7 +80,8 @@ public class SimulationEngineTests
     public void Tick_WithPartialFrame_AccumulatesTime()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
         engine.Tick();
@@ -94,7 +99,8 @@ public class SimulationEngineTests
     public void Tick_AccumulatesPartialFramesOverMultipleCalls()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
         engine.Tick();
@@ -116,16 +122,17 @@ public class SimulationEngineTests
     public void Tick_ClampsFrameTimeToMaximum()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
         engine.Tick();
 
-        // Advance time by 1 second (way more than MAX_FRAME_TIME_MS of 250ms)
+        // Advance time by 1 second (way more than MAX_DELTA_TIME_MS of 250ms)
         timeProvider.Advance(TimeSpan.FromSeconds(1));
         int ticksExecuted = engine.Tick();
 
-        // Should only process MAX_FRAME_TIME_MS worth of ticks
+        // Should only process MAX_DELTA_TIME_MS worth of ticks
         // 250ms / 16.666ms = 15 ticks
         Assert.Equal(15, ticksExecuted);
     }
@@ -134,7 +141,8 @@ public class SimulationEngineTests
     public void Tick_WithExactlyMaxFrameTime_ProcessesExpectedTicks()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
         engine.Tick();
@@ -150,7 +158,8 @@ public class SimulationEngineTests
     public void Run_RespectsCancel()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -165,7 +174,8 @@ public class SimulationEngineTests
     public void SimulationTime_AccumulatesCorrectly()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
         engine.Tick();
@@ -183,36 +193,44 @@ public class SimulationEngineTests
     }
 
     [Fact]
-    public void Tick_CallsRunAllSystemsAndPublishPendingEvents()
+    public void Tick_CallsSystemSchedulerUpdate()
     {
         var timeProvider = new FakeTimeProvider();
-        var mockEngine = new Mock<SimulationEngine>(timeProvider) { CallBase = true };
+        var mockSystem = new Mock<ISystem>();
+        var scheduler = new SystemScheduler();
+        scheduler.RegisterSystem(mockSystem.Object, 60); // Match engine's 60Hz
+
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
-        mockEngine.Object.Tick();
+        engine.Tick();
 
         timeProvider.Advance(TimeSpan.FromMilliseconds(TIMESTEP_MS));
-        mockEngine.Object.Tick();
+        engine.Tick();
 
-        mockEngine.Verify(e => e.RunAllSystems(It.IsAny<double>()), Times.Once());
-        mockEngine.Verify(e => e.PublishPendingEvents(), Times.Once());
+        // System should have been called once via the scheduler
+        mockSystem.Verify(s => s.Update(It.IsAny<double>(), It.IsAny<CancellationToken>()), Times.Once());
     }
 
     [Fact]
-    public void Tick_CallsSystemsCorrectNumberOfTimes()
+    public void Tick_CallsSystemSchedulerCorrectNumberOfTimes()
     {
         var timeProvider = new FakeTimeProvider();
-        var mockEngine = new Mock<SimulationEngine>(timeProvider) { CallBase = true };
+        var mockSystem = new Mock<ISystem>();
+        var scheduler = new SystemScheduler();
+        scheduler.RegisterSystem(mockSystem.Object, 60); // Match engine's 60Hz
+
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // Sync timestamp
-        mockEngine.Object.Tick();
+        engine.Tick();
 
         // Advance by 51ms (enough for 3 ticks: 51/16.67 = 3.06)
         timeProvider.Advance(TimeSpan.FromMilliseconds(51));
-        mockEngine.Object.Tick();
+        engine.Tick();
 
-        mockEngine.Verify(e => e.RunAllSystems(It.IsAny<double>()), Times.Exactly(3));
-        mockEngine.Verify(e => e.PublishPendingEvents(), Times.Exactly(3));
+        // System should have been called 3 times via the scheduler
+        mockSystem.Verify(s => s.Update(It.IsAny<double>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
     }
 
     [Fact]
@@ -225,14 +243,15 @@ public class SimulationEngineTests
     [Fact]
     public void MaxFrameTime_Is250Ms()
     {
-        Assert.Equal(250.0, SimulationEngine.MAX_FRAME_TIME_MS);
+        Assert.Equal(250.0, SimulationEngine.MAX_DELTA_TIME_MS);
     }
 
     [Fact]
     public void Tick_ReturnsCorrectTickCount()
     {
         var timeProvider = new FakeTimeProvider();
-        var engine = new SimulationEngine(timeProvider);
+        var scheduler = new SystemScheduler();
+        var engine = new SimulationEngine(timeProvider, scheduler);
 
         // No time passed - returns 0
         int result1 = engine.Tick();
