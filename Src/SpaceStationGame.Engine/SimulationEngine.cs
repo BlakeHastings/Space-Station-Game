@@ -1,26 +1,34 @@
-﻿namespace SpaceStationGame.Engine;
+﻿using SpaceStationGame.Engine.Events;
+using SpaceStationGame.Engine.Systems;
+
+namespace SpaceStationGame.Engine;
 
 public class SimulationEngine
 {
-    public const double MAX_FRAME_TIME_MS = 250;
+    public const double MAX_DELTA_TIME_MS = 250;
     public const double FIXED_TIMESTEP_MS = 1000.0 / 60.0;
-
-    private readonly TimeProvider _timeProvider;
-    
     private long _previousTimestamp;
 
-    public double Accumulator {get; set; } = 0;
-    public double SimulationTime {get; set; } = 0;
-    public long TickCount {get; set;} = 0;
+    private readonly SystemScheduler _systemScheduler;
+    private readonly EventBus _eventBus;
+    private readonly TimeProvider _timeProvider;
 
-    public SimulationEngine() : this(TimeProvider.System)
-    {
-    }
+    public double Accumulator {get; private set; } = 0;
+    public double SimulationTime {get; private set; } = 0;
+    public long TickCount {get; private set;} = 0;
 
-    public SimulationEngine(TimeProvider timeProvider)
+    public SimulationEngine() : this(TimeProvider.System, new(), new()) {}
+    public SimulationEngine(SystemScheduler systemScheduler, EventBus eventBus) : this(TimeProvider.System, systemScheduler, eventBus) {}
+
+    public SimulationEngine(
+        TimeProvider timeProvider, 
+        SystemScheduler systemScheduler,
+        EventBus eventBus)
     {
         _timeProvider = timeProvider;
         _previousTimestamp = _timeProvider.GetTimestamp();
+        _systemScheduler = systemScheduler;
+        _eventBus = eventBus;
     }
 
     public void Run(CancellationToken cancellationToken)
@@ -29,29 +37,31 @@ public class SimulationEngine
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            Tick();
+            Tick(cancellationToken);
+            Thread.Sleep(1); // avoid spinning CPU 100%
         }
     }
 
-    public int Tick()
+    public int Tick(CancellationToken cancellationToken = default)
     {
         long currentTimestamp = _timeProvider.GetTimestamp();
-        double frameTime = _timeProvider.GetElapsedTime(_previousTimestamp, currentTimestamp).TotalMilliseconds;
+        double deltaTime = _timeProvider.GetElapsedTime(_previousTimestamp, currentTimestamp).TotalMilliseconds;
         _previousTimestamp = currentTimestamp;
 
         // ** This section is to handle when loops slow down. We don't want to rip through all
         // ** frames to catch up when some bloatware app steals CPU time from our engine.
 
         // take min to only render max 0.25s of frames.
-        frameTime = Math.Min(frameTime, MAX_FRAME_TIME_MS);
+        deltaTime = Math.Min(deltaTime, MAX_DELTA_TIME_MS);
         // store the actual frametime "Accumulation" to use it to "catch up" to the current frame
-        Accumulator += frameTime;
+        Accumulator += deltaTime;
 
         int ticksThisFrame = 0;
         while (Accumulator >= FIXED_TIMESTEP_MS)
         {
-            RunAllSystems(FIXED_TIMESTEP_MS);
-            PublishPendingEvents();
+            _systemScheduler.Update(FIXED_TIMESTEP_MS, cancellationToken);
+            _eventBus.Update(TickCount, currentTimestamp);
+            _eventBus.Flush();
 
             Accumulator -= FIXED_TIMESTEP_MS;
             TickCount += 1;
@@ -60,11 +70,6 @@ public class SimulationEngine
         }
 
         return ticksThisFrame;
-    }
-
-    public virtual void RunAllSystems(double fixedTimestep)
-    {
-        Console.WriteLine($"Running All Systems: {TickCount}:{SimulationTime}:{Accumulator}");
     }
 
     public virtual void PublishPendingEvents()

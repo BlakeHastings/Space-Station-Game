@@ -1,16 +1,20 @@
+using System.Text.Json;
 using SpaceStationGame.Engine.Events;
 
 namespace SpaceStationGame.Game.Channels;
 
 public class ConsoleChannel : IEventChannel
 {
-
-
-
-    public void ReceiveBatch(List<EventBusEvent> events)
+    private static readonly JsonSerializerOptions SerializerOptions = new()
     {
-        foreach(var @event in events)
-            Console.WriteLine(@event);    
+        WriteIndented = false
+    };
+
+    public void ReceiveBatch(List<EventEnvelope> events)
+    {
+        foreach (var envelope in events)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(envelope, envelope.GetType(), SerializerOptions));
+        }
     }
 }
-

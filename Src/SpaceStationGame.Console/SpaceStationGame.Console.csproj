@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SpaceStationGame.Engine\SpaceStationGame.Engine.csproj" />
+    <ProjectReference Include="..\SpaceStationGame.Game\SpaceStationGame.Game.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

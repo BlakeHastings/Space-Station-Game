@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Time.Testing;
 using Moq;
 using SpaceStationGame.Engine;
+using SpaceStationGame.Engine.Events;
 using SpaceStationGame.Engine.Systems;
 using Xunit;
 
@@ -16,7 +17,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         Assert.Equal(0, engine.TickCount);
         Assert.Equal(0, engine.SimulationTime);
@@ -28,7 +30,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // First tick syncs the timestamp
         engine.Tick();
@@ -46,7 +49,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -64,7 +68,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -82,7 +87,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -101,7 +107,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -124,7 +131,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -143,7 +151,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -160,7 +169,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         using var cts = new CancellationTokenSource();
         cts.Cancel();
@@ -176,7 +186,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -200,8 +211,9 @@ public class SimulationEngineTests
         var mockSystem = new Mock<ISystem>();
         var scheduler = new SystemScheduler();
         scheduler.RegisterSystem(mockSystem.Object, 60); // Match engine's 60Hz
+        var eventBus = new EventBus();
 
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -220,8 +232,9 @@ public class SimulationEngineTests
         var mockSystem = new Mock<ISystem>();
         var scheduler = new SystemScheduler();
         scheduler.RegisterSystem(mockSystem.Object, 60); // Match engine's 60Hz
+        var eventBus = new EventBus();
 
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // Sync timestamp
         engine.Tick();
@@ -252,7 +265,8 @@ public class SimulationEngineTests
     {
         var timeProvider = new FakeTimeProvider();
         var scheduler = new SystemScheduler();
-        var engine = new SimulationEngine(timeProvider, scheduler);
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
 
         // No time passed - returns 0
         int result1 = engine.Tick();
@@ -263,5 +277,73 @@ public class SimulationEngineTests
         timeProvider.Advance(TimeSpan.FromMilliseconds(100));
         int result2 = engine.Tick();
         Assert.Equal(5, result2);
+    }
+
+    [Fact]
+    public void Tick_UpdatesEventBusCurrentTick()
+    {
+        var timeProvider = new FakeTimeProvider();
+        var scheduler = new SystemScheduler();
+        var eventBus = new EventBus();
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
+
+        // Sync timestamp
+        engine.Tick();
+
+        // Advance time by enough for 3 ticks
+        timeProvider.Advance(TimeSpan.FromMilliseconds(51));
+        engine.Tick();
+
+        // EventBus should have been updated with correct tick count
+        // Note: EventBus.Update is called before TickCount is incremented,
+        // so the last Update call has tick 2 (ticks 0, 1, 2 for 3 simulation ticks)
+        Assert.Equal(2, eventBus.CurrentTick);
+    }
+
+    [Fact]
+    public void Tick_CallsEventBusFlushOnEachSimulationTick()
+    {
+        var timeProvider = new FakeTimeProvider();
+        var scheduler = new SystemScheduler();
+        var eventBus = new EventBus();
+        var mockChannel = new Mock<IEventChannel>();
+        eventBus.RegisterChannel(mockChannel.Object);
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
+
+        // Sync timestamp
+        engine.Tick();
+
+        // Emit an event and advance time for one tick
+        eventBus.Emit(new TestEventData());
+        timeProvider.Advance(TimeSpan.FromMilliseconds(TIMESTEP_MS));
+        engine.Tick();
+
+        // Channel should have received the event batch
+        mockChannel.Verify(c => c.ReceiveBatch(It.IsAny<List<EventEnvelope>>()), Times.Once());
+    }
+
+    [Fact]
+    public void Tick_WithNoElapsedTime_DoesNotCallEventBusFlush()
+    {
+        var timeProvider = new FakeTimeProvider();
+        var scheduler = new SystemScheduler();
+        var eventBus = new EventBus();
+        var mockChannel = new Mock<IEventChannel>();
+        eventBus.RegisterChannel(mockChannel.Object);
+        var engine = new SimulationEngine(timeProvider, scheduler, eventBus);
+
+        // First tick syncs timestamp
+        engine.Tick();
+
+        // Second tick with no time advancement
+        engine.Tick();
+
+        // No simulation ticks occurred, so Flush should not have been called
+        mockChannel.Verify(c => c.ReceiveBatch(It.IsAny<List<EventEnvelope>>()), Times.Never());
+    }
+
+    private class TestEventData : IEventData
+    {
+        public static int EventTypeId => 999;
     }
 }
