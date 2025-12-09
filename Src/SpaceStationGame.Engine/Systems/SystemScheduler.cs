@@ -26,7 +26,7 @@ public class SystemScheduler
     {
         foreach (var scheduledSystem in Systems)
         {
-            if(cancellationToken.IsCancellationRequested) return;
+            if (cancellationToken.IsCancellationRequested) return;
 
             scheduledSystem.Accumulator += frameDeltaTime;
             while (scheduledSystem.Accumulator >= scheduledSystem.TimeStepMs && !cancellationToken.IsCancellationRequested)
