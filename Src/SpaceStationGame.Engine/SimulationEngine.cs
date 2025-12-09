@@ -60,7 +60,7 @@ public class SimulationEngine
         while (Accumulator >= FIXED_TIMESTEP_MS)
         {
             _systemScheduler.Update(FIXED_TIMESTEP_MS, cancellationToken);
-            _eventBus.Update(TickCount, currentTimestamp);
+            _eventBus.Update(TickCount, (long)SimulationTime);
             _eventBus.Flush();
 
             Accumulator -= FIXED_TIMESTEP_MS;
