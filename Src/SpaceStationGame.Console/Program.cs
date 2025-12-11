@@ -27,8 +27,18 @@ var iron_ingot = world.Create(new RecourseComponent
         }
         );
  
-
-
+var iron_ingot_recepie = world.Create(new RecourseComponent
+        {
+            ResourceName = "iron_ingot",
+            WeightKg = 0.2 // kg 
+        }
+        );
+var iron_ore_recepie = world.Create(new RecourseComponent
+        {
+            ResourceName = "iron_ore",
+            WeightKg = 0.8 // kg 
+        }
+        );
 
 // create a Foundry entity whose recipe produces the iron resource
 var foundry = world.Create(
@@ -39,8 +49,9 @@ var foundry = world.Create(
     },
     new RecipeComponent()
     {
-        Ingredients =[],
-        Products = [],
+        
+        Ingredients =[iron_ore_recepie],
+        Products = [iron_ingot_recepie],
         SpeedMultiplier = 1.0,
         EfficiencyMultiplier = 1.0
     },
