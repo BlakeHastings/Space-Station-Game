@@ -11,7 +11,7 @@ public class ProductionSystem : ISystem
 {
     private readonly World _world;
     private readonly EventBus _eventBus;
-    private readonly QueryDescription _productionQuery = new QueryDescription().WithAll<InventoryComponent, RecipeComponent, EnabledComponent>();
+    private readonly QueryDescription _productionQuery = new QueryDescription().WithAll<InventoryComponent, RecipeComponent,NameComponent, EnabledComponent>();
 
     public ProductionSystem(World world, EventBus eventBus)
     {
@@ -21,14 +21,24 @@ public class ProductionSystem : ISystem
 
     public void Update(double timeStepMs, CancellationToken cancellationToken)
     {
-        _world.Query(_productionQuery, (Entity entity, ref InventoryComponent inventory, ref RecipeComponent recipe, ref EnabledComponent enabled) =>
+        _world.Query(_productionQuery, (Entity entity, ref InventoryComponent inventory, ref RecipeComponent recipe, ref EnabledComponent enabled,ref NameComponent name1) =>
         {
-            _eventBus.Emit(new ProductionEvent(entity.Id));
+            _eventBus.Emit(new ProductionEvent(entity.Id, inventory.Capacity));
+            _eventBus.Emit(new NameEvent(name1.Name_1234));
             
             // read inventory
+            Console.WriteLine("Inventory of"+ name1.Name_1234 + " has capacity: " + inventory.Capacity);
+            Console.WriteLine("with items: " + inventory.EntityInventory);
+            foreach (var item in inventory.EntityInventory)
+            {
+                var resource = _world.Get<RecourseComponent>(item);
+                Console.WriteLine(" - contains resource: " + resource.ResourceName + " weighing " + resource.WeightKg + " kg");
+            }
+
             // check for ingredients
 
             // if ingredients available, remove them and add products
+            //Console.WriteLine( inventory.Capacity +"help ");
  
 
         });
@@ -37,7 +47,12 @@ public class ProductionSystem : ISystem
     }
 }
 
-public record ProductionEvent(int EntityId) : IEventData
+public record ProductionEvent(int EntityId,int inventoryCap) : IEventData
 {
     public static int EventTypeId => 2;
+}
+
+public record NameEvent(string name) : IEventData
+{
+    public static int EventTypeId => 3;
 }

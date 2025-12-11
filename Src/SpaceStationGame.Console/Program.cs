@@ -12,21 +12,47 @@ Console.WriteLine("Hello, World!");
 
 var world = World.Create();
 
-world.Create(new InventoryComponent()
-{
-    Capacity = 10,
-    EntityInventory = []
-}, new RecipeComponent()
-{
-    Ingredients = [],
-    Products = [],
-    SpeedMultiplier = 1.0,
-    EfficiencyMultiplier = 1.0
-},
-new EnabledComponent()
-{
-    IsEnabled = true
-});
+// create a resource entity (iron ore) and add it to the world
+var iron_ore = world.Create(new RecourseComponent
+        {
+            ResourceName = "iron_ore",
+            WeightKg = 420.23 // kg 
+        }
+        );
+
+var iron_ingot = world.Create(new RecourseComponent
+        {
+            ResourceName = "iron_ingot",
+            WeightKg = 1.23 // kg 
+        }
+        );
+ 
+
+
+
+// create a Foundry entity whose recipe produces the iron resource
+var foundry = world.Create(
+    new InventoryComponent()
+    {
+        Capacity = 10,
+        EntityInventory = [iron_ore,iron_ingot]
+    },
+    new RecipeComponent()
+    {
+        Ingredients =[],
+        Products = [],
+        SpeedMultiplier = 1.0,
+        EfficiencyMultiplier = 1.0
+    },
+    new EnabledComponent()
+    {
+        IsEnabled = true
+    },
+    new NameComponent()
+    {
+        Name_1234 = "Foundry"
+    }
+);
 
 
 var eventBus = new EventBus();
