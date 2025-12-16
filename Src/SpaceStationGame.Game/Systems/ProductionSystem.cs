@@ -11,6 +11,9 @@ public class ProductionSystem : ISystem
 {
     private readonly World _world;
     private readonly EventBus _eventBus;
+
+    public readonly double minRecourseWeightKg = 0.0001; // = 0.1 gram
+
     private readonly QueryDescription _productionQuery = new QueryDescription().WithAll<InventoryComponent, RecipeComponent,NameComponent, EnabledComponent>();
 
     public ProductionSystem(World world, EventBus eventBus)
@@ -28,7 +31,7 @@ public class ProductionSystem : ISystem
             
             // read inventory
             Console.WriteLine("Inventory of"+ name1.Name_1234 + " has capacity: " + inventory.Capacity);
-            Console.WriteLine("with items: " + inventory.EntityInventory);
+            
             foreach (var item in inventory.EntityInventory)
             {
                 var resource = _world.Get<RecourseComponent>(item);
@@ -47,10 +50,11 @@ public class ProductionSystem : ISystem
                 Console.WriteLine(" - recipe needs  resource: " + resourceType.RecourseName + " weighing " + resource.WeightKg + " kg");
 
                 // check if inventory has this ingredient #TODO: @Savaman07  check if this is efficient enough 
+                var neededResource = _world.Get<RecourseComponent>(item);
+
                 var inventoryHasResource = inventory.EntityInventory.Any(invItem =>
                 {
                     var invResource = _world.Get<RecourseComponent>(invItem);
-                    var neededResource = _world.Get<RecourseComponent>(item);
                     if (invResource.RecourseTypeComponent == neededResource.RecourseTypeComponent)
                     { 
                         return invResource.WeightKg >= neededResource.WeightKg;
@@ -60,11 +64,12 @@ public class ProductionSystem : ISystem
                 });
 
                 
-                // only debug output for now #TODO: remove these prints 
+                // only debug output for now #TODO: remove these prints  and enable the break for performance
                 if (!inventoryHasResource)
                 {
                     Console.WriteLine(" -- missing ingredient: " + _world.Get<RecourseTypeComponent>(resource.RecourseTypeComponent).RecourseName);
                     IngredientsAvailable = false;
+                    //break; TODO: uncomment this for performance when removing debug prints
                 }
                 else
                 {
@@ -75,36 +80,95 @@ public class ProductionSystem : ISystem
 
             }
 
-            if (IngredientsAvailable && enabled.IsEnabled)
+            if (!(IngredientsAvailable && enabled.IsEnabled))
+            {
+                Console.WriteLine("Cannot produce products. Missing ingredients or system disabled.");
+            }
+            else
             {
                 Console.WriteLine("All ingredients available. Producing products...");
 
                 // produce products
+                // aka add products to inventory
                 foreach (var product in recipe.Products)
                 {
                     var resource_product = _world.Get<RecourseComponent>(product);
                     var resourceType_product = _world.Get<RecourseTypeComponent>(resource_product.RecourseTypeComponent);
 
+                     var inventoryHasResource = inventory.EntityInventory.FirstOrDefault(invItem =>
+                    {
+                        var invResource = _world.Get<RecourseComponent>(invItem);
+                        return invResource.RecourseTypeComponent == resource_product.RecourseTypeComponent;
+                    
+                    });
 
 
-
-                    Console.WriteLine(" - produced resource: " + resourceType_product.RecourseName + " weighing " + resource_product.WeightKg + " kg");
+                
+                    if(inventoryHasResource.Id !=0)
+                    { // resource type already in inventory
 
                     
-                    
-                }
+                        var invResourceComp = _world.Get<RecourseComponent>(inventoryHasResource);
+                        invResourceComp.WeightKg += resource_product.WeightKg;
+                        _world.Set(inventoryHasResource, invResourceComp);
 
-                // remove ingredients from inventory
-                foreach (var item in recipe.Ingredients)
-                {
-                    var resourceToRemove = _world.Get<RecourseComponent>(item);
-                   
+                        Console.WriteLine("adding weight to exiting recourse comp kg :"+invResourceComp.WeightKg);
+                    
+                    }
+                
+                    else
+                    { // new resource type for inventory
+
+                    
+                        var newResourceEntity = _world.Create(new RecourseComponent
+                        {
+                            RecourseTypeComponent = resource_product.RecourseTypeComponent,
+                            WeightKg = resource_product.WeightKg
+                        });
+
+                        // add to inventory      
+                        inventory.EntityInventory.Append(newResourceEntity);
+                        Console.WriteLine("adding new recourse to inventory :"+ resourceType_product.RecourseName);
+                        
+                    }
+
+                    // remove ingredients from inventory
+
+
+                        /*              // #TODO: @Savaman07 does a dictionary make sense ?  as we have never more then  1 of each resourceType in inventory ?
+                    // Build a lookup: RecourseTypeComponentId -> RecourseComponent in inventory
+                            var inventoryResourcesByType = inventory.EntityInventory
+                                .Select(invItem => _world.Get<RecourseComponent>(invItem))
+                                .ToDictionary(r => r.RecourseTypeComponent); */
+                    foreach (var ingredient in recipe.Ingredients)
+                    {
+                        var resourceToRemove = _world.Get<RecourseComponent>(ingredient);
+
+                        foreach (var invItem in inventory.EntityInventory)
+                        {
+                            var invResource = _world.Get<RecourseComponent>(invItem);
+                            if (invResource.RecourseTypeComponent == resourceToRemove.RecourseTypeComponent)
+                            {
+                                if (invResource.WeightKg - resourceToRemove.WeightKg < minRecourseWeightKg)
+                                {
+                                    _world.Destroy(invItem);
+                                }
+                                else
+                                {
+                                    invResource.WeightKg -= resourceToRemove.WeightKg;
+                                    _world.Set(invItem, invResource);
+                                    Console.WriteLine("removed ingredient from inventory: " + _world.Get<RecourseTypeComponent>(invResource.RecourseTypeComponent).RecourseName + " new weight kg: " + invResource.WeightKg);
+                                    break; // exit inner loop once we've found and updated the resource
+                                }
+                                
+                            }
+                        }
+
+
+                    }
                 }
             }
-            else
-            {
-                Console.WriteLine("Cannot produce products. Missing ingredients or system disabled.");
-            }
+           
            
  
 

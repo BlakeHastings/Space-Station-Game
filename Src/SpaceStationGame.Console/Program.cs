@@ -29,11 +29,20 @@ var iron_ingot_type = world.Create(new RecourseTypeComponent
     );
 
  
+var copper_ingot_type = world.Create(new RecourseTypeComponent
+ {
+        RecourseName = "copper_ingot",
+        meltingPointCelsius = 1085.0,
+        stackability = Entity.Null // placeholder
+    }
+    );
+
+
 // create a resource entity (iron ore) and add it to the world
 var iron_ore = world.Create(new RecourseComponent
         {
             RecourseTypeComponent = iron_ore_type,
-            WeightKg = 420.23 // kg 
+            WeightKg = 20.23 // kg 
         }
         );
 
