@@ -32,58 +32,50 @@ public class ProductionSystem : ISystem
             foreach (var item in inventory.EntityInventory)
             {
                 var resource = _world.Get<RecourseComponent>(item);
-                Console.WriteLine(" - contains resource: " + resource.ResourceName + " weighing " + resource.WeightKg + " kg");
+                var resourceType = _world.Get<RecourseTypeComponent>(resource.RecourseTypeComponent);
+                Console.WriteLine(" - contains resource: " + resourceType.RecourseName + " weighing " + resource.WeightKg + " kg");
             }
 
             // check for ingredients
 
-            bool IngredientsAvailable = true;
+            
 
             foreach (var item in recipe.Ingredients)
             {
                 var resource = _world.Get<RecourseComponent>(item);
-                Console.WriteLine(" - recepie needs  resource: " + resource.ResourceName + " weighing " + resource.WeightKg + " kg");
+                var resourceType = _world.Get<RecourseTypeComponent>(resource.RecourseTypeComponent);
+                Console.WriteLine(" - recepie needs  resource: " + resourceType.RecourseName + " weighing " + resource.WeightKg + " kg");
 
-                // check if inventory has this ingredient
-                var inventoryHasResource = inventory.EntityInventory.Any(invItem =>
+                // check if inventory has this ingredient #TODO: @Savaman07  check if this is efficnet enough 
+                bool IngredientsAvailable = inventory.EntityInventory.Any(invItem =>
                 {
                     var invResource = _world.Get<RecourseComponent>(invItem);
                     var neededResource = _world.Get<RecourseComponent>(item);
-                    return invResource.ResourceName == neededResource.ResourceName;
+                    if (invResource.RecourseTypeComponent == neededResource.RecourseTypeComponent)
+                    { 
+                        return invResource.WeightKg >= neededResource.WeightKg;
+                    }
+                    else return false;
+                    
                 });
 
-                if (!inventoryHasResource)
+
+                // just debug prints   #TODO:  remove debug prints 
+                if (!IngredientsAvailable)
                 {
-                    Console.WriteLine(" -- missing ingredient: " + resource.ResourceName);
-                    IngredientsAvailable = false;
-                } // check if inventory has enough quantity of this ingredient
+
+                    
+                    Console.WriteLine(" -- missing ingredient: " + _world.Get<RecourseTypeComponent>(resource.RecourseTypeComponent).RecourseName);
+                    
+                }
                 else
                 {
-                    // Inventory entity list is unique, so just get the weight directly @Savamen07   right this is ture ? #TODO: check if  this ture ?
-                    var inventoryResource = _world.Get<RecourseComponent>(item);
-                    
-                    // Check if inventory has enough weight of this resource  
-                    // this is ai slop i dotn even understand it 
-                    double totalAvailable = inventory.EntityInventory.Where(invItem =>
-                    {
-                        var invResource = _world.Get<RecourseComponent>(invItem);
+                    Console.WriteLine(" -- ingredient found in inventory.");
 
-                        return invResource.ResourceName == resource.ResourceName;
-                        
-                    }).Sum(invItem => _world.Get<RecourseComponent>(invItem).WeightKg);
+                    }
+                
 
-                if (totalAvailable >= resource.WeightKg)
-                {
-                    Console.WriteLine($" -- found enough! (have: {totalAvailable} kg, need: {resource.WeightKg} kg)");
-                }
-                                else
-                                {
-                                    Console.WriteLine(" -- insufficient quantity! (have: " + inventoryResource.WeightKg + " kg, need: " + resource.WeightKg + " kg)");
-                                    IngredientsAvailable = false;
-                                }
-                            }
-
-                        }
+            }
 
             // if ingredients available, remove them and add products
            
