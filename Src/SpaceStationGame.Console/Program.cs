@@ -12,30 +12,47 @@ Console.WriteLine("Hello, World!");
 
 var world = World.Create();
 
+
+var iron_ore_type = world.Create(new RecourseTypeComponent
+ {
+        RecourseName = "iron_ore",
+        meltingPointCelsius = 1560.0,
+        Stackability = Entity.Null // placeholder
+    }
+    );
+var iron_ingot_type = world.Create(new RecourseTypeComponent
+ {
+        RecourseName = "iron_ingot",
+        meltingPointCelsius = 1538.0,
+        Stackability = Entity.Null // placeholder
+    }
+    );
+
+ 
 // create a resource entity (iron ore) and add it to the world
 var iron_ore = world.Create(new RecourseComponent
         {
-            ResourceName = "iron_ore",
+            RecourseTypeComponent = iron_ore_type,
             WeightKg = 420.23 // kg 
         }
         );
 
 var iron_ingot = world.Create(new RecourseComponent
         {
-            ResourceName = "iron_ingot",
+            RecourseTypeComponent = iron_ingot_type,
             WeightKg = 1.23 // kg 
         }
         );
  
 var iron_ingot_recepie = world.Create(new RecourseComponent
         {
-            ResourceName = "iron_ingot",
+            RecourseTypeComponent = iron_ingot_type,
             WeightKg = 0.2 // kg 
         }
         );
 var iron_ore_recepie = world.Create(new RecourseComponent
         {
-            ResourceName = "iron_ore",
+           RecourseTypeComponent = iron_ore_type,
             WeightKg = 0.8 // kg 
         }
         );
