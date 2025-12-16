@@ -38,16 +38,16 @@ public class ProductionSystem : ISystem
 
             // check for ingredients
 
-            
+            bool IngredientsAvailable = true;
 
             foreach (var item in recipe.Ingredients)
             {
                 var resource = _world.Get<RecourseComponent>(item);
                 var resourceType = _world.Get<RecourseTypeComponent>(resource.RecourseTypeComponent);
-                Console.WriteLine(" - recepie needs  resource: " + resourceType.RecourseName + " weighing " + resource.WeightKg + " kg");
+                Console.WriteLine(" - recipe needs  resource: " + resourceType.RecourseName + " weighing " + resource.WeightKg + " kg");
 
-                // check if inventory has this ingredient #TODO: @Savaman07  check if this is efficnet enough 
-                bool IngredientsAvailable = inventory.EntityInventory.Any(invItem =>
+                // check if inventory has this ingredient #TODO: @Savaman07  check if this is efficient enough 
+                var inventoryHasResource = inventory.EntityInventory.Any(invItem =>
                 {
                     var invResource = _world.Get<RecourseComponent>(invItem);
                     var neededResource = _world.Get<RecourseComponent>(item);
@@ -59,14 +59,12 @@ public class ProductionSystem : ISystem
                     
                 });
 
-
-                // just debug prints   #TODO:  remove debug prints 
-                if (!IngredientsAvailable)
+                
+                // only debug output for now #TODO: remove these prints 
+                if (!inventoryHasResource)
                 {
-
-                    
                     Console.WriteLine(" -- missing ingredient: " + _world.Get<RecourseTypeComponent>(resource.RecourseTypeComponent).RecourseName);
-                    
+                    IngredientsAvailable = false;
                 }
                 else
                 {
@@ -77,7 +75,36 @@ public class ProductionSystem : ISystem
 
             }
 
-            // if ingredients available, remove them and add products
+            if (IngredientsAvailable && enabled.IsEnabled)
+            {
+                Console.WriteLine("All ingredients available. Producing products...");
+
+                // produce products
+                foreach (var product in recipe.Products)
+                {
+                    var resource_product = _world.Get<RecourseComponent>(product);
+                    var resourceType_product = _world.Get<RecourseTypeComponent>(resource_product.RecourseTypeComponent);
+
+
+
+
+                    Console.WriteLine(" - produced resource: " + resourceType_product.RecourseName + " weighing " + resource_product.WeightKg + " kg");
+
+                    
+                    
+                }
+
+                // remove ingredients from inventory
+                foreach (var item in recipe.Ingredients)
+                {
+                    var resourceToRemove = _world.Get<RecourseComponent>(item);
+                   
+                }
+            }
+            else
+            {
+                Console.WriteLine("Cannot produce products. Missing ingredients or system disabled.");
+            }
            
  
 

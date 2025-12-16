@@ -17,14 +17,14 @@ var iron_ore_type = world.Create(new RecourseTypeComponent
  {
         RecourseName = "iron_ore",
         meltingPointCelsius = 1560.0,
-        Stackability = Entity.Null // placeholder
+        stackability = Entity.Null // placeholder
     }
     );
 var iron_ingot_type = world.Create(new RecourseTypeComponent
  {
         RecourseName = "iron_ingot",
         meltingPointCelsius = 1538.0,
-        Stackability = Entity.Null // placeholder
+        stackability = Entity.Null // placeholder
     }
     );
 
@@ -44,13 +44,13 @@ var iron_ingot = world.Create(new RecourseComponent
         }
         );
  
-var iron_ingot_recepie = world.Create(new RecourseComponent
+var iron_ingot_recipe = world.Create(new RecourseComponent
         {
             RecourseTypeComponent = iron_ingot_type,
             WeightKg = 0.2 // kg 
         }
         );
-var iron_ore_recepie = world.Create(new RecourseComponent
+var iron_ore_recipe = world.Create(new RecourseComponent
         {
            RecourseTypeComponent = iron_ore_type,
             WeightKg = 0.8 // kg 
@@ -67,8 +67,8 @@ var foundry = world.Create(
     new RecipeComponent()
     {
         
-        Ingredients =[iron_ore_recepie],
-        Products = [iron_ingot_recepie],
+        Ingredients =[iron_ore_recipe],
+        Products = [iron_ingot_recipe],
         SpeedMultiplier = 1.0,
         EfficiencyMultiplier = 1.0
     },
