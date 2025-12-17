@@ -31,6 +31,8 @@ public class ProductionSystem : ISystem
             
             // read inventory
             Console.WriteLine("Inventory of"+ name1.Name_1234 + " has capacity: " + inventory.Capacity);
+            var recipeSpeedMultiplier = recipe.SpeedMultiplier; // so we need this cause recipe is not available in lambdas or something 
+            var recipeEfficiencyMultiplier = recipe.EfficiencyMultiplier;
             
             foreach (var item in inventory.EntityInventory)
             {
@@ -47,7 +49,9 @@ public class ProductionSystem : ISystem
             {
                 var resource = _world.Get<RecourseComponent>(item);
                 var resourceType = _world.Get<RecourseTypeComponent>(resource.RecourseTypeComponent);
-                Console.WriteLine(" - recipe needs  resource: " + resourceType.RecourseName + " weighing " + resource.WeightKg + " kg");
+
+                Console.WriteLine(" - recipe needs  resource: " + resourceType.RecourseName + " weighing " + resource.WeightKg* recipeSpeedMultiplier + " kg");
+                Console.WriteLine("recipe base ingredient :"+resource.WeightKg+ " kg");
 
                 // check if inventory has this ingredient #TODO: @Savaman07  check if this is efficient enough 
                 var neededResource = _world.Get<RecourseComponent>(item);
@@ -57,7 +61,7 @@ public class ProductionSystem : ISystem
                     var invResource = _world.Get<RecourseComponent>(invItem);
                     if (invResource.RecourseTypeComponent == neededResource.RecourseTypeComponent)
                     { 
-                        return invResource.WeightKg >= neededResource.WeightKg;
+                        return invResource.WeightKg >= neededResource.WeightKg* recipeSpeedMultiplier;
                     }
                     else return false;
                     
@@ -87,6 +91,8 @@ public class ProductionSystem : ISystem
             else
             {
                 Console.WriteLine("All ingredients available. Producing products...");
+                Console.WriteLine("Producing products for recipe on entity: " + name1.Name_1234);
+                Console.WriteLine("Recipe speedmulti = " + recipe.SpeedMultiplier + " effince multi ="+recipe.EfficiencyMultiplier);
 
                 // produce products
                 // aka add products to inventory
@@ -109,7 +115,7 @@ public class ProductionSystem : ISystem
 
                     
                         var invResourceComp = _world.Get<RecourseComponent>(inventoryHasResource);
-                        invResourceComp.WeightKg += resource_product.WeightKg;
+                        invResourceComp.WeightKg += resource_product.WeightKg* recipeEfficiencyMultiplier* recipeSpeedMultiplier;
                         _world.Set(inventoryHasResource, invResourceComp);
 
                         Console.WriteLine("adding weight to exiting recourse comp kg :"+invResourceComp.WeightKg);
@@ -123,11 +129,11 @@ public class ProductionSystem : ISystem
                         var newResourceEntity = _world.Create(new RecourseComponent
                         {
                             RecourseTypeComponent = resource_product.RecourseTypeComponent,
-                            WeightKg = resource_product.WeightKg
+                            WeightKg = resource_product.WeightKg* recipeEfficiencyMultiplier* recipeSpeedMultiplier
                         });
 
                         // add to inventory      
-                        inventory.EntityInventory.Append(newResourceEntity);
+                        inventory.EntityInventory.Append(newResourceEntity);  // #TODO: @Savaman07 check if we can jsut append like this 
                         Console.WriteLine("adding new recourse to inventory :"+ resourceType_product.RecourseName);
                         
                     }
@@ -149,13 +155,13 @@ public class ProductionSystem : ISystem
                             var invResource = _world.Get<RecourseComponent>(invItem);
                             if (invResource.RecourseTypeComponent == resourceToRemove.RecourseTypeComponent)
                             {
-                                if (invResource.WeightKg - resourceToRemove.WeightKg < minRecourseWeightKg)
+                                if (invResource.WeightKg - resourceToRemove.WeightKg *recipeSpeedMultiplier < minRecourseWeightKg)
                                 {
                                     _world.Destroy(invItem);
                                 }
                                 else
                                 {
-                                    invResource.WeightKg -= resourceToRemove.WeightKg;
+                                    invResource.WeightKg -= resourceToRemove.WeightKg * recipeSpeedMultiplier;
                                     _world.Set(invItem, invResource);
                                     Console.WriteLine("removed ingredient from inventory: " + _world.Get<RecourseTypeComponent>(invResource.RecourseTypeComponent).RecourseName + " new weight kg: " + invResource.WeightKg);
                                     break; // exit inner loop once we've found and updated the resource

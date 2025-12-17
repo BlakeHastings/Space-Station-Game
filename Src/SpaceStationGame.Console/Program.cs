@@ -49,7 +49,7 @@ var iron_ore = world.Create(new RecourseComponent
 var iron_ingot = world.Create(new RecourseComponent
         {
             RecourseTypeComponent = iron_ingot_type,
-            WeightKg = 1.23 // kg 
+            WeightKg = 0.0 // kg 
         }
         );
  
@@ -79,7 +79,7 @@ var foundry = world.Create(
         Ingredients =[iron_ore_recipe],
         Products = [iron_ingot_recipe],
         SpeedMultiplier = 1.0,
-        EfficiencyMultiplier = 1.0
+        EfficiencyMultiplier = 1.3
     },
     new EnabledComponent()
     {
